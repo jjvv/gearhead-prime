@@ -46,8 +46,9 @@ This project currently depends on just a few pieces of software:
 * numpy
 
 All are readily available as packages under Ubuntu Linux, and probably
-every other major Linux distribution. Probably Macs and Windows too, 
-I don't know.
+every other major Linux distribution. Packages/installers for other
+operating systems are also available at the Python website.
+See http://python.org/download
 
 Inclusions
 ----------
