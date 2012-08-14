@@ -106,7 +106,7 @@ class Map(yaml.YAMLObject):
                     else:
                         ch = terrain_.roguechar
                     while ch in cell_chars:
-                        ch = unicode_usable[unicode_used]
+                        ch = usable_unicode_chars[unicode_used]
                         unicode_used += 1
                     cell_chars.append(ch)
                 cells[i,j] = cell_types[terrain_,contents]
@@ -121,6 +121,7 @@ class Map(yaml.YAMLObject):
             terrain_, contents = k
             d['cell_types'][cell_chars[v]] = [terrain_]+list(contents)
         return d
+
     def __setstate__(self, d):
         cell_types = d.pop('cell_types')
         cell_map = d.pop('map')

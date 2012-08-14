@@ -64,7 +64,6 @@ class Advance(Action):
             #doors register as always passable, so pathing can work
             #if filter(lambda x: isinstance(x,gamemap.Door), gameboard.gamemap.objects)
             #^ temporarily cancelled: made door.passable depend on open, disadvantage being no pathing through doors
-            #ideally, I think advance should trigger OpenDoor
 
             gameboard.gamemap.objects[gameboard.PC.coords].remove(gameboard.PC)
             gameboard.PC.coords = to_x, to_y
@@ -74,9 +73,9 @@ class Advance(Action):
                 % (to_x, to_y)
 
 class OpenDoor(Action):
-    def __init__(self, subj, door):
+    def __init__(self, subj, obj):
         self.subj = subj
-        self.door = door
+        self.door = obj
     def __call__(self, gameboard):
         if not gamemap.adjacent(self.subj.coords, self.door.coords):
             raise ActionFailure, "Cannot open door: not adjacent to it."
@@ -84,9 +83,9 @@ class OpenDoor(Action):
             self.door.closed = False
 
 class CloseDoor(Action):
-    def __init__(self, subj, door):
+    def __init__(self, subj, obj):
         self.subj = subj
-        self.door = door
+        self.door = obj
     def __call__(self, gameboard):
         if not gamemap.adjacent(self.subj.coords, self.door.coords):
             raise ActionFailure, "Cannot close door: not next to it."
