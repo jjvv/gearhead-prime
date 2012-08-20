@@ -1,0 +1,59 @@
+!GraphicsMan
+
+title: Default Isometric Tileset
+
+images:
+#This mapping maps graphic names (strings) to "state-maps"
+#Each state-map is a mapping of state descriptor to an image descriptor
+#Each state descriptor* is actually a set of strings, such as !hset ["injured","orientation_3"]
+#Each image descriptor is a list of [filename, start_x, start_y, width, height] as in the style of SDL_image_desc
+#*Since Python lists and sets aren't hashable, they cannot be used as keys in mappings (although doing so is technically on-spec for YAML)
+# so, I have implemented a hashable set datatype: !hset. It is designed to be initialized from a list of strings.
+# However, alternative "shortcut" ways the state descriptor can be given as:
+#    - A single string s. The descriptor is then taken as !hset [s]
+#    - null: The descriptor is taken as !hset []. Note that the "empty" state is taken as the default state for an object. The engine will revert to the empty state if an object requests a graphic-state that is missing from this file.
+#
+#The graphic with the name "dummy" is one used when a graphic is missing from this file, so it should always be defined.
+
+    #default image to revert to
+    dummy:
+        !hset [] : [dummy.png, 0,0,64,96]
+
+    pc:
+        null: [cha_f_mechanic.png, 0,0, 64,64]
+        #the different orienations:
+        o0: [cha_f_mechanic.png, 0,0,     64,64]
+        o1: [cha_f_mechanic.png, 64,0,    64,64]
+        o2: [cha_f_mechanic.png, 128,0,   64,64]
+        o3: [cha_f_mechanic.png, 192,0,   64,64]
+        o4: [cha_f_mechanic.png, 0,64,    64,64]
+        o5: [cha_f_mechanic.png, 64,64,   64,64]
+        o6: [cha_f_mechanic.png, 128,64,  64,64]
+        o7: [cha_f_mechanic.png, 192,64,  64,64]
+    
+#Terrain
+    void:
+        null: ["big_terrain.png", 576,0,64,96]
+    floor:
+        null: ["big_terrain.png", 576,96,64,96]
+    wall:
+        null: ["big_terrain.png", 576,96,64,96]
+    door:
+        null: [door_a.png, 0,0,64,96]
+        !hset [hori,open]:   [door_a.png, 64,96, 64,96]
+        !hset [hori,closed]: [door_a.png, 64,0,  64,96]
+        !hset [vert,open]:   [door_a.png, 0,96,  64,96]
+        !hset [vert,closed]: [door_a.png, 0,0,   64,96]
+    
+#Thinwalls
+    tw-crd: {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 0,288,   64,96]}
+    tw-cld: {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 64,192,  64,96]}
+    tw-cru: {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 128,96,  64,96]}
+    tw-clu: {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 192,0,   64,96]}
+    tw-h:   {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 64,96,   64,96]}
+    tw-v:   {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 128,192, 64,96]}
+    tw-jd:  {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 64,288,  64,96]}
+    tw-ju:  {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 192,96,  64,96]}
+    tw-jr:  {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 128,288, 64,96]}
+    tw-jl:  {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 192,192, 64,96]}
+    tw-jx:  {null: [SharkD_Wall_FlatTechy_b_sheet_a.png, 192,288, 64,96]}

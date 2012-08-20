@@ -20,24 +20,43 @@
 #       
 # 
 
-import yaml
+import random
 
-class PC(object):
+import yaml
+import image
+import action
+
+class Character(yaml.YAMLObject):
+    yaml_tag = "!Character"    
+    def __init__(self, name, sprites, map=None, orientation=0, coords=(0,0)):
+        self.name = name
+        self.sprites = sprites
+        self.orientation = orientation
+        self.map = map
+        self.coords = coords
+        self.opaque = False
+        self.passable = False
+    @property
+    def graphic(self):
+        #return self.sprites[self.orientation]
+        return ('character',)
+
+class PC(Character):
     def __init__(self):
-        import image
         self.colors = image.random_color_scheme("personal")
-        print self.colors
-        self.sprites = [image.get("cha_f_mechanic.png", self.colors, (64*(i%4), 64*(i//4), 64, 64)) for i in range(8)]
-        self.orientation = 0
-        self.map = None
-        self.coords = (0,0)
+        Character.__init__(self, "you", image.character_sprites("cha_f_mechanic.png",self.colors))
 
     @property
-    def sprite(self):
-        return self.sprites[self.orientation]
-    
-        
+    def graphic(self):
+        return ('pc', set('o%i'%self.orientation))
 
+class Monster(Character):
+    def __init__(self, name, sprites, map=None, orientation=0, coords=(0,0), description=None):
+        Character.__init__(self, name, sprites, map=map, orientation=orientation, coords=coords)
+        self.description = description
+    def act(self):
+        return random.choice([action.Advance(self), action.Turn(self,1), action.Turn(self,0)])
+    
 class Gameboard(yaml.YAMLObject):
     yaml_tag = "!Gameboard"
     
@@ -46,6 +65,9 @@ class Gameboard(yaml.YAMLObject):
         self.PC = None
         self.messages = ["New game"]
         self.ui = None
+        self.active_NPCs = []
+        self.time = 0
+        self.next_actor = []
     
     def post_message(self, message):
         self.messages.append(message)

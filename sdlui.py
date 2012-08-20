@@ -33,6 +33,7 @@ import gamemap
 import sdlmap
 import command
 import action
+import image
 
 import random
 
@@ -88,13 +89,13 @@ class MapLayer(Layer):
     def handle(self, event):
         if event.type == pygame.KEYDOWN:
             if event.unicode == u'[':
-                self.ui.command_processor.issue(command.ActionSequence([action.Turn(False)]))
+                self.ui.command_processor.issue(action.Turn(self.ui.gameboard.PC,False))
                 return True
             elif event.unicode == u']':
-                self.ui.command_processor.issue(command.ActionSequence([action.Turn(True)]))
+                self.ui.command_processor.issue(action.Turn(self.ui.gameboard.PC,True))
                 return True
             elif event.unicode == u'=':
-                self.ui.command_processor.issue(command.ActionSequence([action.Advance()]))
+                self.ui.command_processor.issue(action.Advance(self.ui.gameboard.PC))
                 return True
             elif event.key == pygame.K_UP:
                 self.ui.command_processor.issue(command.TurnAndGo(self.ui.gameboard.PC, 7))
@@ -125,33 +126,20 @@ class MapLayer(Layer):
                 self.ui.command_processor.issue(command.TurnAndGo(self.ui.gameboard.PC, direction))
 
             elif event.unicode in [u'O', u'C']:
-                #open a door
-                filterfunc = lambda x: isinstance(x, gamemap.Door) and \
-                              gamemap.adjacent(x.coords, self.ui.gameboard.PC.coords)
-                #adjdoors = filter(filterfunc, 
-               # print 'objects list:', self.gamemap.objects
-               # filterdoors = lambda x: isinstance(x, gamemap.Door)
-               # doorlist = filter(filterdoors, self.gamemap.objects)
-               # print 'doorlist:', doorlist
-               # filteradj = lambda x: gamemap.adjacent(x.coords, self.ui.gameboard.PC.coords)
-               # adjdoors = filter(filteradj, doorlist)
-                adjdoors = self.gamemap.lsobjects(filterfunc)
-                if len(adjdoors)==0:
-                    return True
-
-                opendoors =  filter(lambda d: not d.closed, adjdoors)  or adjdoors
-                closedoors = filter(lambda d: d.closed, adjdoors)      or adjdoors
-                #^ this will revert to the full adjdoors list if there are no matches because of the or
-
+                for c in gamemap.neighbors(self.ui.gameboard.PC.coords):
+                    for o in self.gamemap.objects[c]:
+                        if isinstance(o, gamemap.Door):
+                            if o.closed and event.unicode==u'O':
+                                self.ui.command_processor.issue(
+                                    action.OpenDoor(self.ui.gameboard.PC, o, c))  #FIXME getting hold of the PC and such is getting very verbose...
+                                return True
+                            elif not o.closed and event.unicode==u'C':
+                                self.ui.command_processor.issue(
+                                    action.CloseDoor(self.ui.gameboard.PC, o, c))
+                                return True
                 #FIXME: this will interact with a random appropriate if there is more than one. choice should be given
-                if event.unicode==u'O':
-                    actioncls = action.OpenDoor
-                    door = closedoors.pop()
-                elif event.unicode==u'C':
-                    actioncls = action.CloseDoor
-                    door = opendoors.pop()
+                self.ui.gameboard.post_message("No suitable doors found")
 
-                self.ui.command_processor.issue(command.ActionSequence([actioncls(self.ui.gameboard.PC, door)]))  #FIXME getting hold of the PC and such is getting very verbose...
                 return True
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -177,7 +165,12 @@ class SDLUI(ui.UI):
         gb.gamemap = gamemap.load_ascii_map(util.data_dir("testmap2.txt"))
         gb.PC = game.PC()
         gb.PC.coords = (10,5)
+        gb.PC.map = gb.gamemap
         gb.gamemap.objects[gb.PC.coords].append(gb.PC)
+        m = game.Monster("rat", image.character_sprites("monster_rat.png"), 
+            map=gb.gamemap, coords=(1,1))
+        gb.gamemap.objects[m.coords].append(m)
+        gb.active_NPCs.append(m)
         ui.UI.new_game(self, gb)
         
         self.layers = [MapLayer(gamemap.Map(gb.gamemap.size), gb.gamemap, self), HUDLayer(gb,self)]

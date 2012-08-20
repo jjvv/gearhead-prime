@@ -52,7 +52,6 @@ class Map(yaml.YAMLObject):
         self.size = size
         self.w, self.h = self.size
         self.terrain_array = np.zeros(self.size, np.uint8)
-        self.seen = np.zeros(self.size, np.uint8)
         self.terrain_types = [terrain.void]
         self.terrain_types_reverse = { self.terrain_types[0]: 0 }
         self.objects = collections.defaultdict(list)
@@ -112,20 +111,22 @@ class Map(yaml.YAMLObject):
                 cells[i,j] = cell_types[terrain_,contents]
 
         d['map'] = '\n'.join("".join(cell_chars[cells[i,j]] for i in range(self.w)) for j in range(self.h))+"\n"
-        if np.any(self.seen):
-            d['seen'] = '\n'.join("".join('*' if self.seen[i,j] else '.' for i in range(self.w)) for j in range(self.h))+"\n"
-        else:
-            del d['seen']
         d['cell_types'] = {}
         for (k,v) in cell_types.items():
+            c = cell_chars[v]
+            if c == ' ':
+                continue
+            try:
+                c = c.encode('ascii')
+            except UnicodeEncodeError:
+                pass
             terrain_, contents = k
-            d['cell_types'][cell_chars[v]] = [terrain_]+list(contents)
+            d['cell_types'][c] = [terrain_]+list(contents)
         return d
 
     def __setstate__(self, d):
         cell_types = d.pop('cell_types')
         cell_map = d.pop('map')
-        seen = d.pop('seen',None)
 
         self.__dict__ = d
         
@@ -136,12 +137,6 @@ class Map(yaml.YAMLObject):
  
         self.size = (self.w, self.h)
         self.terrain_array = np.zeros(self.size, np.uint8)
-        self.seen = np.zeros(self.size, np.uint8)
-        if seen is not None:
-            for j,l in enumerate(seen.split("\n")):
-                for i,c in enumerate(l):
-                    if c!='.':
-                        self.seen[i,j] = 1
         self.terrain_types = [terrain.void]
         self.terrain_types_reverse = { self.terrain_types[0]: 0 }
         self.objects = collections.defaultdict(list)
@@ -186,7 +181,7 @@ class Map(yaml.YAMLObject):
         #TODO? optionally only return objects inside a certain rect of coords
         ls = set()
         #[[ls.update(set(matches)) for matches in filter(filterfunc, tile_contents)]
-         #   for tile_contents in self.objects.values()]
+        #   for tile_contents in self.objects.values()]
         for tile_contents in self.objects.values():
             for obj in tile_contents:
                 if not filterfunc:
@@ -198,21 +193,14 @@ class Map(yaml.YAMLObject):
 class Feature(yaml.YAMLObject):
     yaml_tag = "!Feature"
     
-    def __init__(self, name, roguechar, sdl_image_spec, 
+    def __init__(self, name, roguechar, graphic, 
                  passable=True, opaque=False, description=None):
         self.name = name
         self.roguechar = roguechar
-        self.sdl_image_spec = sdl_image_spec
+        self.graphic = graphic
         self.description = description
         self._passable = passable
         self._opaque = opaque
-        self._sprite = None
-
-    @property
-    def sprite(self):
-        if self._sprite is None:
-            self._sprite = image.get(*self.sdl_image_spec)
-        return self._sprite
 
     @property
     def passable(self):
@@ -221,30 +209,22 @@ class Feature(yaml.YAMLObject):
     def opaque(self):
         return self._opaque
         
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        del d['_sprite']
-        return d
-    def __setstate__(self,d):
-        self.__dict__ = d
-        self._sprite = None
-
 #some default thinwalls
 twfile = "SharkD_Wall_FlatTechy_b_sheet_a.png"
 twls = {}
 colors = image.random_color_scheme('mecha')
-#ThinWall, Corner: Right and Down
-twls[u'┌'] = Feature("tw-crd", u"┌", (twfile, colors, (0,288,64,96)), False, True)
-twls[u'┐'] = Feature("tw-cld", u"┐", (twfile, colors, (64,192,64,96)), False, True)
-twls[u'└'] = Feature("tw-cru", u"└", (twfile, colors, (64*2,96,64,96)), False, True)
-twls[u'┘'] = Feature("tw-clu", u"┘", (twfile, colors, (64*3,0,64,96)), False, True)
-twls[u'─'] = Feature("tw-h",   u"─", (twfile, colors, (64,96,64,96)), False, True)
-twls[u'│'] = Feature("tw-v",   u"│", (twfile, colors, (64*2,96*2,64,96)), False, True)
-twls[u'┬'] = Feature("tw-jd",  u"┬", (twfile, colors, (64, 96*3, 64,96)), False, True)
-twls[u'┴'] = Feature("tw-ju",  u"┴", (twfile, colors, (64*3, 96, 64,96)), False, True)
-twls[u'├'] = Feature("tw-jr",  u"├", (twfile, colors, (64*2, 96*3, 64,96)), False, True)
-twls[u'┤'] = Feature("tw-jl",  u"┤", (twfile, colors, (64*3, 96*2, 64,96)), False, True)
-twls[u'┼'] = Feature("tw-jx",  u"┼", (twfile, colors, (64*3, 96*3, 64,96)), False, True)
+#eg: 'tw-crd': ThinWall, Corner, Right and Down
+twls[u'┌'] = Feature("tw-crd", u"┌", ('tw-crd',), False, True)
+twls[u'┐'] = Feature("tw-cld", u"┐", ('tw-cld',), False, True)
+twls[u'└'] = Feature("tw-cru", u"└", ('tw-cru',), False, True)
+twls[u'┘'] = Feature("tw-clu", u"┘", ('tw-clu',), False, True)
+twls[u'─'] = Feature("tw-h",   u"─", ('tw-h',),   False, True)
+twls[u'│'] = Feature("tw-v",   u"│", ('tw-v',),   False, True)
+twls[u'┬'] = Feature("tw-jd",  u"┬", ('tw-jd',),  False, True)
+twls[u'┴'] = Feature("tw-ju",  u"┴", ('tw-ju',),  False, True)
+twls[u'├'] = Feature("tw-jr",  u"├", ('tw-jr',),  False, True)
+twls[u'┤'] = Feature("tw-jl",  u"┤", ('tw-jl',),  False, True)
+twls[u'┼'] = Feature("tw-jx",  u"┼", ('tw-jx',),  False, True)
 
 
 def load_ascii_map(f):
@@ -258,6 +238,7 @@ def load_ascii_map(f):
     w = max(len(l) for l in a)
     a = [l+" "*(w-len(l)) for l in a]
     M = Map((w,len(a)))
+    doors = set()
     for j, l in enumerate(a):
         for i, c in enumerate(l):
             obj = []
@@ -272,12 +253,20 @@ def load_ascii_map(f):
 
             elif c=='+':
                 c = terrain.floor
-                obj = [Door((i,j), map=M)]
+                doors.add((i,j))
 
             else:
                 c = terrain.void
             M.set_terrain((i,j),c)
             M.objects[i,j].extend(obj)
+    for (i,j) in doors:
+        hscore = 0
+        vscore = 0
+        if not M.is_passable((i-1,j)): hscore += 1
+        if not M.is_passable((i+1,j)): hscore += 1
+        if not M.is_passable((i,j+1)): vscore += 1
+        if not M.is_passable((i,j-1)): vscore += 1
+        M.objects[i,j].append(Door(Door.OR_HORI if hscore>vscore else Door.OR_VERT))
     return M
 
 
@@ -299,29 +288,47 @@ def adjacent(pos1, pos2):
     x2, y2 = pos2
     return (not pos1==pos2) and abs(x1-x2)<=1 and abs(y1-y2)<=1
 
+def neighbors(coords):
+    i,j = coords
+    for k in [-1,0,1]:
+        for l in [-1,0,1]:
+            if k==0 and l==0:
+                continue
+            yield (i+k,j+l)
 
-#another attempt at doors:
 class Door(Feature):
+    yaml_tag = "!Door"
     OR_HORI, OR_VERT = 0, 1
-    def __init__(self, coords, closed=True, locked=False, map=None, orien=None):
+    def __init__(self, orien, closed=True, locked=False):
         """coords: location on map
 map: optional reference back to containing Map
 orien: orientation (eg. Door.OR_HORI). None means auto-detect."""
-        Feature.__init__(self, 'door', '+', None, description="Door")
-        del self._passable, self._opaque, self._sprite
+        self.name = 'door'
+        self.roguechar = '+'
+        self.description = None
 
-        self.coords = (coords[0], coords[1])
+        self.locked = locked
         self.closed = closed
-        self.map = map
-        self._orien = orien
+        self.orien = orien
         
     @property
-    def sprite(self):
-        if self.orien==Door.OR_HORI: x=64
-        else: x=0
-        y = 0
-        if not self.closed: y = 96
-        return image.get("door_a.png", None, (x,y,64,96))
+    def graphic(self):
+        #if self.closed:
+            #return self.closed_sprite[self.orien]
+        #else:
+        #    return self.open_sprite[self.orien]
+        state = set()
+        if self.closed:
+            state.add('closed')
+        else:
+            state.add('open')
+
+        if self.orien == Door.OR_HORI:
+            state.add('hori')
+        else:
+            state.add('vert')
+
+        return ('door', state)
 
     @property
     def passable(self):
@@ -329,34 +336,6 @@ orien: orientation (eg. Door.OR_HORI). None means auto-detect."""
     @property
     def opaque(self):
         return self.closed
-    @property
-    def orien(self):
-        if self._orien not in (Door.OR_HORI,Door.OR_VERT):
-            if self.map is not None:
-                self._orien = Door.detect_door_orientation(self, self.map)
-            else:
-                self._orien = Door.OR_HORI
-        return self._orien
-
-    @staticmethod
-    def detect_door_orientation(door, mp):
-        hscore, vscore = 0, 0
-        dx,dy = door.coords
-        #if len(map.objects[(dx+1,dy)]): hscore-=1
-        if mp.is_passable((dx+1,dy)): hscore-=1
-        if mp.is_passable((dx-1,dy)): hscore-=1
-        if mp.is_passable((dx,dy+1)): vscore-=1
-        if mp.is_passable((dx,dy-1)): vscore-=1
-        
-        if vscore > hscore: return Door.OR_VERT
-        else: return Door.OR_HORI
-
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        return d
-    def __setstate__(self, d):
-        self.__dict__ = d
-
 
 
 

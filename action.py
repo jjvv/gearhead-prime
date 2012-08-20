@@ -40,57 +40,79 @@ class Action(object):
     world passes through actions; they handle making sure that (for
     example) things that are supposed to take time, do take time.
     """
+    def __init__(self, char):
+        self.char = char
     def __call__(self, gameboard):
         raise NotImplemented
 
 class Turn(Action):
-    def __init__(self, right): #FIXME: does 'right' mean clockwise?
+    def __init__(self, char, right): #FIXME: does 'right' mean clockwise?
+        Action.__init__(self, char)
         self.right = right
     def __call__(self, gameboard):
         if self.right:
-            gameboard.PC.orientation += 1
+            self.char.orientation += 1
         else:
-            gameboard.PC.orientation -= 1
-        gameboard.PC.orientation %= 8
+            self.char.orientation -= 1
+        self.char.orientation %= 8
+        return 100 #milliseconds
 
 class Advance(Action):
     def __call__(self, gameboard):
-        x, y = gameboard.PC.coords
-        delta_x, delta_y = gamemap.orientation_to_delta[gameboard.PC.orientation]
+        x, y = self.char.coords
+        delta_x, delta_y = gamemap.orientation_to_delta[self.char.orientation]
         to_x, to_y = x+delta_x, y+delta_y
-        if gameboard.gamemap.is_passable((to_x,to_y)):
 
-            #check if any doors in the way
-            #doors register as always passable, so pathing can work
-            #if filter(lambda x: isinstance(x,gamemap.Door), gameboard.gamemap.objects)
-            #^ temporarily cancelled: made door.passable depend on open, disadvantage being no pathing through doors
+        if self.char.map.is_passable((to_x,to_y)):
+            self.char.map.objects[self.char.coords].remove(self.char)
+            self.char.coords = to_x, to_y
+            self.char.map.objects[self.char.coords].append(self.char)
+            return 500 #milliseconds
 
-            gameboard.gamemap.objects[gameboard.PC.coords].remove(gameboard.PC)
-            gameboard.PC.coords = to_x, to_y
-            gameboard.gamemap.objects[gameboard.PC.coords].append(gameboard.PC)
         else:
-            raise ActionFailure, "Cannot advance into (%i,%i): blocked by terrain"\
-                % (to_x, to_y)
+            blocker = "unknown object"
+            if not self.char.map.terrain((to_x,to_y)).passable:
+                blocker = self.char.map.terrain((to_x,to_y)).name
+            else:
+                for o in self.char.map.objects[to_x,to_y]:
+                    if not o.passable:
+                        blocker = o.name
+                        break
+            raise ActionFailure("Cannot advance into (%i,%i): blocked by %s"
+                % (to_x, to_y, blocker))
 
 class OpenDoor(Action):
-    def __init__(self, subj, obj):
-        self.subj = subj
-        self.door = obj
+    def __init__(self, char, door, coords):
+        Action.__init__(self, char)
+        self.door = door
+        self.coords = coords
+        # FIXME: check door is actually at coords
+
     def __call__(self, gameboard):
-        if not gamemap.adjacent(self.subj.coords, self.door.coords):
-            raise ActionFailure, "Cannot open door: not adjacent to it."
+        if not gamemap.adjacent(self.char.coords, self.coords):
+            raise ActionFailure("Not adjacent to door")
+        if self.door.locked:
+            raise ActionFailure("Door is locked")
         if self.door.closed:
             self.door.closed = False
+            return 500 #milliseconds
+        else:
+            raise ActionFailure("Door is already open")
 
 class CloseDoor(Action):
-    def __init__(self, subj, obj):
-        self.subj = subj
-        self.door = obj
+    def __init__(self, char, door, coords):
+        Action.__init__(self, char)
+        self.door = door
+        self.coords = coords
+        # FIXME: check door is actually at coords
     def __call__(self, gameboard):
-        if not gamemap.adjacent(self.subj.coords, self.door.coords):
-            raise ActionFailure, "Cannot close door: not next to it."
+        if not gamemap.adjacent(self.char.coords, self.coords):
+            raise ActionFailure("Not adjacent to door")
         if not self.door.closed:
             self.door.closed = True
+            return 500 #milliseconds
+        else:
+            raise ActionFailure("Door is already closed")
 
 
 if __name__=='__main__':

@@ -30,6 +30,8 @@ import gamemap
 import image
 import terrain
 
+import graphicsman
+
 
 class SDLMap(object):
     """Graphical representation of a particular map
@@ -51,6 +53,9 @@ class SDLMap(object):
         self.view_y = 0
         self.map_to_draw = map_to_draw
         self.mouse_cursor = image.get("target64.png", None, (0,0,64,64))
+
+        #TODO: make this determinable from config file
+        self.gman = graphicsman.GraphicsMan.loadfile("images/tilesets/isometric/default/spec.yaml")
     
     def draw(self, screen, work_rects=None):
         """Draw the map to the screen"""
@@ -66,7 +71,8 @@ class SDLMap(object):
                 view_y =  16*i+16*j
                 x, y = view_x - self.view_x + screen.get_width()//2, view_y-self.view_y + screen.get_height()//2
                 t = self.map_to_draw.terrain((i,j))
-                s = t.sprite
+                #s = t.sprite.image
+                s = self.gman.get(t.graphic)
                 s_pos = Rect(x-32,y+16-s.get_height(),s.get_width(),s.get_height())
                 if s_pos.collidelist(work_rects)>=0:
                     screen.blit(s, s_pos)
@@ -75,7 +81,9 @@ class SDLMap(object):
                             if isinstance(t, pygame.Surface):
                                 s = t
                             else:
-                                s = t.sprite
+                                #s = t.sprite.image
+                                s = self.gman.get(t.graphic)
+
                             screen.blit(s,(x-32,y+16-s.get_height()))
     def map_coords(self, xy, screen):
         x, y = xy
